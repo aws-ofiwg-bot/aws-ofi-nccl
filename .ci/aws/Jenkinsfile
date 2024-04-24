@@ -1,0 +1,107 @@
+/* SPDX-License-Identifier: BSD-2-Clause OR GPL-2.0-only */
+/* SPDX-FileCopyrightText: Copyright Amazon.com, Inc. or its affiliates. All rights reserved. */
+// Use milestones to abort old builds when the user force pushes
+def buildNumber = env.BUILD_NUMBER as int
+if (buildNumber > 1) milestone(buildNumber - 1)
+milestone(buildNumber)
+
+pipeline {
+    agent {
+        ecs {
+            inheritFrom 'fargate-large'
+        }
+    }
+    options {
+        buildDiscarder(logRotator(daysToKeepStr: "90"))
+        timeout(time: 8, unit: 'HOURS')
+    }
+    environment {
+        // AWS region where the cluster is created
+        REGION="us-west-2"
+    }
+    stages {
+        // Cleanup workspace before job start.
+        stage("Clean up workspace") {
+            steps{
+                deleteDir()
+            }
+        }
+        stage("Checkout SCM repo") {
+            steps {
+                checkout scm
+            }
+        }
+        stage("Download and extract PortaFiducia") {
+            steps {
+                script {
+                    sh 'printenv'
+                    def common = load ".ci/aws/common.groovy"
+                    common.download_and_extract_portafiducia('PortaFiducia')
+                }
+            }
+        }
+        stage("Install PortaFiducia") {
+            steps {
+                script {
+                    def common = load ".ci/aws/common.groovy"
+                    common.install_porta_fiducia()
+                }
+
+            }
+        }
+        stage("Test EFA provider") {
+            steps {
+                script {
+                    def common = load ".ci/aws/common.groovy"
+                    def stages = [:]
+                    def nccl_version = "v2.20.5-1"
+                    def addl_args_pr = "--test-aws-ofi-nccl-pr $env.CHANGE_ID --test-nccl-version ${nccl_version} "
+                    def config = ".ci/aws/aws_ofi_nccl_pr_ci.yaml"
+                    def lock_count = 2
+                    def p3dn_lock_label = "p3dn-1-4node"
+                    def p4d_lock_label = "p4-1-4node"
+                    def p5_lock_label = "p5-1-4node"
+
+                    // AL2
+                    stages["2_p5_alinux2"] = common.get_test_stage_with_lock("2_p5_alinux2", env.BUILD_TAG, "alinux2", "c5n.18xlarge", "us-east-1", p5_lock_label, lock_count, config, addl_args_pr)
+
+                    // Ubuntu 20.04
+                    // Ubuntu 22.04
+
+
+                    parallel stages
+                }
+            }
+        }
+        stage('check build_ok') {
+            steps {
+                script {
+                    def common = load ".ci/aws/common.groovy"
+                    if (common.build_ok) {
+                        currentBuild.result = "SUCCESS"
+                    }
+                    else {
+                        currentBuild.result = "FAILURE"
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            sh 'find outputs -name "*.xml" | xargs du -shc'
+            junit testResults: 'outputs/**/*.xml', keepLongStdio: false
+            archiveArtifacts artifacts: 'outputs/**/*.*'
+        }
+        failure {
+            sh 'echo "Jenkins pipeline has failed."'
+        }
+        aborted {
+            sh '. venv/bin/activate; ./PortaFiducia/scripts/delete_manual_cluster.py --cluster-name "$BUILD_TAG"\'*\' --region $REGION'
+        }
+        // Cleanup workspace after job completes.
+        cleanup {
+            deleteDir()
+        }
+    }
+}

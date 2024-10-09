@@ -159,8 +159,9 @@ pipeline {
                     def p4d_region = "us-west-2"
                     def p4d_odcr = "cr-0e5eebb3c896f6af0"
                     def p5_lock_label = "p5-1-4node"
-                    def p5_region = "af-south-1"
-                    def p5_odcr = "cr-02eb632dcd8175139"
+                    def p5_region = "us-east-2"
+                    def p5_odcr = "cr-01bbd867e8d27e894"
+                    def p4_p5_addl_args = "${base_args} --use-prebuilt-ami-with-efa-installer true"
                     def g4dn_lock_label = "g4dn-1-4node"
                     def g4dn_region = "us-west-2"
                     def g4dn_odcr = "cr-0e2f9cac30bb5ad5f"
@@ -210,6 +211,14 @@ pipeline {
                     stages["4_p4d_alinux2"] = get_test_stage_with_lock("4_p4d_alinux2", env.BUILD_TAG, "ubuntu2004", "p4d.24xlarge", p4d_region, p4d_lock_label, num_instances, p4d_odcr, "${p4d_addl_args} --container-os alinux2")
                     stages["4_p4d_ubuntu2004"] = get_test_stage_with_lock("4_p4d_ubuntu2004", env.BUILD_TAG, "ubuntu2004", "p4d.24xlarge", p4d_region, p4d_lock_label, num_instances, p4d_odcr, "${p4d_addl_args} --container-os ubuntu2004")
                     stages["4_p4d_ubuntu2204"] = get_test_stage_with_lock("4_p4d_ubuntu2204", env.BUILD_TAG, "ubuntu2004", "p4d.24xlarge", p4d_region, p4d_lock_label, num_instances, p4d_odcr, "${p4d_addl_args} --container-os ubuntu2204")
+
+                    // p5 tests
+                    p5_addl_args = "${p4_p5_addl_args} ${persistent_manual_cluster_addl_args} ${container_addl_args}"
+                    num_instances = 2
+                    stages["2_p5_alinux2"] = get_test_stage_with_lock("2_p5_alinux2", env.BUILD_TAG, "alinux2", "p5.48xlarge", p5_region, p5_lock_label, num_instances, p5_odcr, "${p5_addl_args} --container-os alinux2")
+                    stages["2_p5_ubuntu2004"] = get_test_stage_with_lock("2_p5_ubuntu2004", env.BUILD_TAG, "alinux2", "p5.48xlarge", p5_region, p5_lock_label, num_instances, p5_odcr, "${p5_addl_args} --container-os ubuntu2004")
+                    stages["2_p5_ubuntu2204"] = get_test_stage_with_lock("2_p5_ubuntu2204", env.BUILD_TAG, "alinux2", "p5.48xlarge", p5_region, p5_lock_label, num_instances, p5_odcr, "${p5_addl_args} --container-os ubuntu2204")
+
                     parallel stages
                 }
             }

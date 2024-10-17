@@ -164,7 +164,7 @@ pipeline {
                     def p4_p5_addl_args = "${base_args} --use-prebuilt-ami-with-efa-installer true"
                     def g4dn_lock_label = "g4dn-1-4node"
                     def g4dn_region = "us-west-2"
-                    def g4dn_odcr = "cr-0e2f9cac30bb5ad5f"
+                    def g4dn_odcr = "cr-02bff28a1f3bfc32d"
                     def g4dn_addl_args = "${base_args}"
                     def trn1_lock_label = "trn1-1-4node"
                     def trn1_region = "us-east-2"
@@ -208,9 +208,9 @@ pipeline {
 
                     // p4d tests
                     p4d_addl_args = "${p4_p5_addl_args} ${persistent_manual_cluster_addl_args} ${container_addl_args}"
-                    stages["4_p4d_alinux2"] = get_test_stage_with_lock("4_p4d_alinux2", env.BUILD_TAG, "ubuntu2004", "p4d.24xlarge", p4d_region, p4d_lock_label, num_instances, p4d_odcr, "${p4d_addl_args} --container-os alinux2")
-                    stages["4_p4d_ubuntu2004"] = get_test_stage_with_lock("4_p4d_ubuntu2004", env.BUILD_TAG, "ubuntu2004", "p4d.24xlarge", p4d_region, p4d_lock_label, num_instances, p4d_odcr, "${p4d_addl_args} --container-os ubuntu2004")
-                    stages["4_p4d_ubuntu2204"] = get_test_stage_with_lock("4_p4d_ubuntu2204", env.BUILD_TAG, "ubuntu2004", "p4d.24xlarge", p4d_region, p4d_lock_label, num_instances, p4d_odcr, "${p4d_addl_args} --container-os ubuntu2204")
+                    stages["4_p4d_alinux2"] = get_test_stage_with_lock("4_p4d_alinux2", env.BUILD_TAG, "alinux2", "p4d.24xlarge", p4d_region, p4d_lock_label, num_instances, p4d_odcr, "${p4d_addl_args} --container-os alinux2")
+                    stages["4_p4d_ubuntu2004"] = get_test_stage_with_lock("4_p4d_ubuntu2004", env.BUILD_TAG, "alinux2", "p4d.24xlarge", p4d_region, p4d_lock_label, num_instances, p4d_odcr, "${p4d_addl_args} --container-os ubuntu2004")
+                    stages["4_p4d_ubuntu2204"] = get_test_stage_with_lock("4_p4d_ubuntu2204", env.BUILD_TAG, "alinux2", "p4d.24xlarge", p4d_region, p4d_lock_label, num_instances, p4d_odcr, "${p4d_addl_args} --container-os ubuntu2204")
 
                     // p5 tests
                     p5_addl_args = "${p4_p5_addl_args} ${persistent_manual_cluster_addl_args} ${container_addl_args}"

@@ -299,7 +299,8 @@ pipeline {
                     // stages["4_trn1n_ubuntu2004"] = get_test_stage_with_lock("4_trn1n_ubuntu2004", env.BUILD_TAG, "ubuntu2004", "trn1n.32xlarge", trn1n_region, trn1n_lock_label, num_instances, trn1n_odcr, trn1n_addl_args)
 
 
-                    def persistent_manual_cluster_addl_args = " --keep-cluster --skip-fixture-setup --skip-health-checks --use-existing-installer --cleanup-pf-directory"
+                    def aws_ofi_nccl_repo = "--test-aws-ofi-nccl-repo https://github.com/aws-ofiwg-bot/aws-ofi-nccl.git"
+                    def persistent_manual_cluster_addl_args = " --keep-cluster --skip-fixture-setup --skip-health-checks --use-existing-installer --cleanup-pf-directory ${aws_ofi_nccl_repo}"
                     def container_addl_args = " --test-in-containers-on-ec2"
 
                     def g4dn_persist_lock_label = "g4dn-persist-4node"

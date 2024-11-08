@@ -17,9 +17,11 @@ def get_portafiducia_download_path() {
 
 def download_and_extract_portafiducia(outputDir) {
     /* Download PortaFiducia tarball from S3 and extract to outputDir */
-    def tempPath = "/tmp/portafiducia.tar.gz"
+    def tempPath = "/shm/portafiducia.tar.gz"
     def downloadPath = this.get_portafiducia_download_path()
     sh """
+        ls /
+        sudo mkdir /shm
         mkdir -p ${outputDir}
         aws s3 cp ${downloadPath} ${tempPath}
         tar xf ${tempPath} -C ${outputDir}
@@ -31,11 +33,11 @@ def install_porta_fiducia() {
      * Install PortaFiducia in a (new) virtual environment.
      */
     sh '''
-        python3 -m venv /tmp/PortaFiducia/venv
-        . /tmp/PortaFiducia/venv/bin/activate
+        python3 -m venv /shm/PortaFiducia/venv
+        . /shm/PortaFiducia/venv/bin/activate
         pip install --upgrade pip
         pip install --upgrade awscli
-        pip install -e /tmp/PortaFiducia
+        pip install -e /shm/PortaFiducia
     '''
 }
 
@@ -60,8 +62,8 @@ def run_test_orchestrator_once_persistent(run_name, build_tag, os, instance_type
     def buildNumber = env.BUILD_NUMBER as int
     def cluster_name = get_persistent_cluster_name(build_tag, os, instance_type)
     def region = get_persistent_cluster_region(cluster_name)
-    def args = "--os ${os} --instance-type ${instance_type} --instance-count ${instance_count} --region ${region} --cluster-name ${cluster_name} ${addl_args} --perf-metrics-path /tmp/PortaFiducia/outputs --junit-xml /tmp/PortaFiducia/outputs/${cluster_name}-PR${buildNumber}.xml"
-    sh ". /tmp/PortaFiducia/venv/bin/activate; /tmp/PortaFiducia/tests/test_orchestrator.py ${args}"
+    def args = "--os ${os} --instance-type ${instance_type} --instance-count ${instance_count} --region ${region} --cluster-name ${cluster_name} ${addl_args} --perf-metrics-path /shm/PortaFiducia/outputs --junit-xml /shm/PortaFiducia/outputs/${cluster_name}-PR${buildNumber}.xml"
+    sh ". /shm/PortaFiducia/venv/bin/activate; /shm/PortaFiducia/tests/test_orchestrator.py ${args}"
 
 }
 
@@ -73,8 +75,8 @@ def run_test_orchestrator_once_container(run_name, build_tag, os, container_os, 
     def buildNumber = env.BUILD_NUMBER as int
     def cluster_name = get_persistent_cluster_name(build_tag, os, instance_type)
     def region = get_persistent_cluster_region(cluster_name)
-    def args = "--os ${os} --container-os ${container_os} --instance-type ${instance_type} --instance-count ${instance_count} --region ${region} --cluster-name ${cluster_name} ${addl_args} --perf-metrics-path /tmp/PortaFiducia/outputs --junit-xml /tmp/PortaFiducia/outputs/${cluster_name}-PR${buildNumber}-${os}-${container_os}.xml"
-    sh ". /tmp/PortaFiducia/venv/bin/activate; /tmp/PortaFiducia/tests/test_orchestrator.py ${args}"
+    def args = "--os ${os} --container-os ${container_os} --instance-type ${instance_type} --instance-count ${instance_count} --region ${region} --cluster-name ${cluster_name} ${addl_args} --perf-metrics-path /shm/PortaFiducia/outputs --junit-xml /shm/PortaFiducia/outputs/${cluster_name}-PR${buildNumber}-${os}-${container_os}.xml"
+    sh ". /shm/PortaFiducia/venv/bin/activate; /shm/PortaFiducia/tests/test_orchestrator.py ${args}"
 
 }
 
@@ -144,7 +146,7 @@ pipeline {
             steps {
                 script {
                     sh 'printenv'
-                    download_and_extract_portafiducia('/tmp/PortaFiducia')
+                    download_and_extract_portafiducia('/shm/PortaFiducia')
                 }
             }
         }
@@ -221,7 +223,7 @@ pipeline {
     }
     post {
         always {
-            sh 'rm -rf $PWD/outputs && cp -r /tmp/PortaFiducia/outputs/ ${PWD}'
+            sh 'rm -rf $PWD/outputs && cp -r /shm/PortaFiducia/outputs/ ${PWD}'
             junit testResults: 'outputs/**/*.xml', keepLongStdio: false
             archiveArtifacts artifacts: 'outputs/**/*.*'
         }

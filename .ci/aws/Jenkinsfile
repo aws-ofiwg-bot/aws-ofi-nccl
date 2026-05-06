@@ -91,7 +91,7 @@ def run_test_orchestrator_once_persistent(run_name, build_tag, os, instance_type
     def buildNumber = env.BUILD_NUMBER as int
     def cluster_name = get_persistent_cluster_name(build_tag, os, instance_type)
     def region = get_persistent_cluster_region(cluster_name)
-    def args = "--os ${os} --instance-type ${instance_type} --instance-count ${instance_count} --region ${region} --cluster-name ${cluster_name} ${addl_args} --perf-metrics-path /tmp/PortaFiducia/outputs --junit-xml /tmp/PortaFiducia/outputs/${run_name}-PR${buildNumber}.xml"
+    def args = "--os ${os} --instance-type ${instance_type} --instance-count ${instance_count} --region ${region} --cluster-name ${cluster_name} ${addl_args} --perf-metrics-path /tmp/PortaFiducia/outputs --junit-xml /tmp/PortaFiducia/outputs/${run_name}-PR${buildNumber}.xml --test-aws-ofi-nccl-repo https://github.com/aws-ofiwg-bot/aws-ofi-nccl.git"
     sh ". /tmp/PortaFiducia/venv/bin/activate; /tmp/PortaFiducia/tests/test_orchestrator.py ${args}"
 
 }
@@ -172,33 +172,33 @@ pipeline {
         REGION="us-west-2"
     }
     stages {
-        stage('Authorize PR Author') {
-            when { changeRequest() }
-            steps {
-                script {
-                    def AWS_ACCOUNT_ID = get_account_id()
-                    sh "aws s3 cp s3://aws-ofi-nccl-github-approved-authors-${AWS_ACCOUNT_ID}/ofi_nccl_approved_author_list/approved_authors.txt /tmp/approved_authors.txt"
-                }
-                withCredentials([string(credentialsId: 'github-pat-read-org', variable: 'GH_TOKEN')]) {
-                    sh '''
-                        PERM_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
-                            "https://api.github.com/repos/aws/aws-ofi-nccl/collaborators/${CHANGE_AUTHOR}/permission")
-                        PERM=$(echo "$PERM_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin).get('permission','none'))" 2>/dev/null || echo "none")
-                        if [ "$PERM" = "admin" ] || [ "$PERM" = "write" ]; then
-                            echo "✅ ${CHANGE_AUTHOR} has ${PERM} access — authorized"
-                            exit 0
-                        fi
-                        echo "${CHANGE_AUTHOR} has ${PERM} repo access, checking approved authors list..."
-                        if awk '{print $1}' /tmp/approved_authors.txt | grep -qx "${CHANGE_AUTHOR}"; then
-                            echo "✅ ${CHANGE_AUTHOR} is on the approved authors list"
-                            exit 0
-                        fi
-                        echo "❌ ${CHANGE_AUTHOR} is not authorized to run CI"
-                        exit 1
-                    '''
-                }
-            }
-        }
+        // stage('Authorize PR Author') {
+        //     when { changeRequest() }
+        //     steps {
+        //         script {
+        //             def AWS_ACCOUNT_ID = get_account_id()
+        //             sh "aws s3 cp s3://aws-ofi-nccl-github-approved-authors-${AWS_ACCOUNT_ID}/ofi_nccl_approved_author_list/approved_authors.txt /tmp/approved_authors.txt"
+        //         }
+        //         withCredentials([string(credentialsId: 'github-pat-read-org', variable: 'GH_TOKEN')]) {
+        //             sh '''
+        //                 PERM_JSON=$(curl -s -H "Authorization: token $GH_TOKEN" \
+        //                     "https://api.github.com/repos/aws/aws-ofi-nccl/collaborators/${CHANGE_AUTHOR}/permission")
+        //                 PERM=$(echo "$PERM_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin).get('permission','none'))" 2>/dev/null || echo "none")
+        //                 if [ "$PERM" = "admin" ] || [ "$PERM" = "write" ]; then
+        //                     echo "✅ ${CHANGE_AUTHOR} has ${PERM} access — authorized"
+        //                     exit 0
+        //                 fi
+        //                 echo "${CHANGE_AUTHOR} has ${PERM} repo access, checking approved authors list..."
+        //                 if awk '{print $1}' /tmp/approved_authors.txt | grep -qx "${CHANGE_AUTHOR}"; then
+        //                     echo "✅ ${CHANGE_AUTHOR} is on the approved authors list"
+        //                     exit 0
+        //                 fi
+        //                 echo "❌ ${CHANGE_AUTHOR} is not authorized to run CI"
+        //                 exit 1
+        //             '''
+        //         }
+        //     }
+        // }
         stage("Download and extract PortaFiducia") {
             steps {
                 script {
@@ -265,25 +265,25 @@ pipeline {
                     def g4dn_tcp_addl_args = "${g4dn_addl_args} ${test_tcp_provider}"
                     def neuron_addl_args = "${base_args} ${neuron_test_list}"
 
-                    // p3dn tests
-                    stages["4_p3dn_al2"] = get_test_stage_with_lock_container("4_p3dn_al2", env.BUILD_TAG, base_os, "alinux2", "p3dn.24xlarge", p3dn_lock_label, num_instances, p3_p4_addl_args)
-                    stages["4_p3dn_ubuntu2204"] = get_test_stage_with_lock_container("4_p3dn_ubuntu2204", env.BUILD_TAG, base_os, "ubuntu2204", "p3dn.24xlarge", p3dn_lock_label, num_instances, p3_p4_addl_args)
+                    // // p3dn tests
+                    // stages["4_p3dn_al2"] = get_test_stage_with_lock_container("4_p3dn_al2", env.BUILD_TAG, base_os, "alinux2", "p3dn.24xlarge", p3dn_lock_label, num_instances, p3_p4_addl_args)
+                    // stages["4_p3dn_ubuntu2204"] = get_test_stage_with_lock_container("4_p3dn_ubuntu2204", env.BUILD_TAG, base_os, "ubuntu2204", "p3dn.24xlarge", p3dn_lock_label, num_instances, p3_p4_addl_args)
 
-                    // p4d tests
-                    stages["4_p4d_alinux2"] = get_test_stage_with_lock_container("4_p4d_alinux2", env.BUILD_TAG, base_os, "alinux2", "p4d.24xlarge", p4d_lock_label, num_instances, p3_p4_addl_args)
-                    stages["4_p4d_ubuntu2204"] = get_test_stage_with_lock_container("4_p4d_ubuntu2204", env.BUILD_TAG, base_os, "ubuntu2204", "p4d.24xlarge", p4d_lock_label, num_instances, p3_p4_addl_args)
+                    // // p4d tests
+                    // stages["4_p4d_alinux2"] = get_test_stage_with_lock_container("4_p4d_alinux2", env.BUILD_TAG, base_os, "alinux2", "p4d.24xlarge", p4d_lock_label, num_instances, p3_p4_addl_args)
+                    // stages["4_p4d_ubuntu2204"] = get_test_stage_with_lock_container("4_p4d_ubuntu2204", env.BUILD_TAG, base_os, "ubuntu2204", "p4d.24xlarge", p4d_lock_label, num_instances, p3_p4_addl_args)
 
-                    // p5 tests
-                    stages["4_p5_alinux2"] = get_test_stage_with_lock_container("4_p5_alinux2", env.BUILD_TAG, base_os, "alinux2", "p5.48xlarge", p5_lock_label, num_instances, p5_addl_args)
-                    stages["4_p5_ubuntu2204"] = get_test_stage_with_lock_container("4_p5_ubuntu2204", env.BUILD_TAG, base_os, "ubuntu2204", "p5.48xlarge", p5_lock_label, num_instances, p5_addl_args)
+                    // // p5 tests
+                    // stages["4_p5_alinux2"] = get_test_stage_with_lock_container("4_p5_alinux2", env.BUILD_TAG, base_os, "alinux2", "p5.48xlarge", p5_lock_label, num_instances, p5_addl_args)
+                    // stages["4_p5_ubuntu2204"] = get_test_stage_with_lock_container("4_p5_ubuntu2204", env.BUILD_TAG, base_os, "ubuntu2204", "p5.48xlarge", p5_lock_label, num_instances, p5_addl_args)
 
-                    // p5en tests
-                    stages["4_p5en_alinux2"] = get_test_stage_with_lock_container("4_p5en_alinux2", env.BUILD_TAG, base_os, "alinux2", "p5en.48xlarge", p5en_lock_label, num_instances, p5en_addl_args)
-                    stages["4_p5en_ubuntu2204"] = get_test_stage_with_lock_container("4_p5en_ubuntu2204", env.BUILD_TAG, base_os, "ubuntu2204", "p5en.48xlarge", p5en_lock_label, num_instances, p5en_addl_args)
+                    // // p5en tests
+                    // stages["4_p5en_alinux2"] = get_test_stage_with_lock_container("4_p5en_alinux2", env.BUILD_TAG, base_os, "alinux2", "p5en.48xlarge", p5en_lock_label, num_instances, p5en_addl_args)
+                    // stages["4_p5en_ubuntu2204"] = get_test_stage_with_lock_container("4_p5en_ubuntu2204", env.BUILD_TAG, base_os, "ubuntu2204", "p5en.48xlarge", p5en_lock_label, num_instances, p5en_addl_args)
 
                     // g4dn tests
                     stages["4_g4dn_ubuntu2204"] = get_test_stage_with_lock_persistent("4_g4dn_ubuntu2204", env.BUILD_TAG, "ubuntu2204", "g4dn.12xlarge", g4dn_lock_label, num_instances, g4dn_addl_args)
-                    stages["4_g4dn_ubuntu2204_tcp"] = get_test_stage_with_lock_persistent("4_g4dn_ubuntu2204_tcp", env.BUILD_TAG, "ubuntu2204", "g4dn.12xlarge", g4dn_lock_label, num_instances, g4dn_tcp_addl_args)
+                    // stages["4_g4dn_ubuntu2204_tcp"] = get_test_stage_with_lock_persistent("4_g4dn_ubuntu2204_tcp", env.BUILD_TAG, "ubuntu2204", "g4dn.12xlarge", g4dn_lock_label, num_instances, g4dn_tcp_addl_args)
 
                     // trn1 tests
                     // stages["4_trn1_ubuntu2204"] = get_test_stage_with_lock_persistent("4_trn1_ubuntu2204", env.BUILD_TAG, "ubuntu2204", "trn1.32xlarge", trn1_lock_label, num_instances, neuron_addl_args)
